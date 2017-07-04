@@ -12,7 +12,7 @@ There is little research regarding the classification of multiple cancers using 
 ## Model 
 The study compared two different machine learning models, supervised and unsupervised clustering with an overall accuracy of 78%. Their model was unable to classify poorly differentiated tumors. We will use hierarchical clustering to differentiate between the major groups and investigate further to find partitions in the poorly differentiated groups. 
 
-## Refrences
+## References
 1. Murphy,Meg (2017, February 17) Empowering Cancer Treatment with Machine Learning. 
 2. Connolly, J. L., Schnitt, S. J., Wang, H. H., Dvorak, A. M. & Dvorak, H. F. (1997) in Cancer Medicine, eds. Holland, J. F., Frei, E., Bast, R. C., Kufe, D. W., Morton, D. L. & Weichselbaum, R. R. (Williams & Wilkins, Baltimore), pp. 533–555.
-3. S. Ramaswamy, et al Multiclass cancer diagnosis using tumor gene expression signatures. 
+3. [S. Ramaswamy, et al Multiclass cancer diagnosis using tumor gene expression signatures.](http://portals.broadinstitute.org/cgi-bin/cancer/publications/view/61)
