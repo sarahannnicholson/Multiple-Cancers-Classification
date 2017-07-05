@@ -1,43 +1,53 @@
 import csv
 import logging
 import re
-
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-from sklearn import feature_extraction
+import numpy as np
 import tqdm
+from sklearn import svm
 
 
 class FeatureData(object):
     """Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
 
-    def __init__(self, file_path):
-        self.number_of_classes = 14
-        self.classes = ["Breast", "Prostate", "Lung", "Colorectal", "Lymphoma", "Bladder", "Melanoma",
-                        "Uterus__Adeno", "Leukemia", "Renal", "Pancreas", "Ovary", "Mesothelioma", "CNS"]
-        self.tumor_samples = self._get_tumor_samples(file_path)
-        self.number_of_samples = len(self.tumor_samples)
+    def __init__(self, res_path, cls_path):
+        self._get_classes(cls_path)
+       	self._get_tumor_samples(res_path)
+
+    def _get_classes(self, path):
+    	with open(path, 'r') as f:
+            reader = [l.strip() for l in f.readlines()]
+            self.number_of_samples = reader[0].split(' ')[0]
+            self.number_of_classes = reader[0].split(' ')[1]
+            self.classes = reader[1].split(' ')
+            self.Y = reader[2].split(' ')
 
     def _get_tumor_samples(self, path):
-        # Body ID, articleBody
-        samples = []
         with open(path, 'r') as inputFile:
-            reader = csv.reader(inputFile, 'excel-tab')
-            cnt =0
-            for row in reader:
-                if cnt < 5:
-                    row_stripped = filter(lambda name: name.strip(), row)
-                    print row_stripped, "\n\n"
-                    samples.append(row_stripped)
-                cnt +=1
-        return samples
+            lines = [l.strip().split('	') for l in inputFile.readlines()]           
+            data = np.matrix(lines[3:]).T[2:]
+            data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
 
+        self.X = data.astype(float)
+
+    def _describe(self):
+        print len(self.X)
+        print len(self.Y)
+        print self.number_of_samples
+    	print self.number_of_classes
 
 
 if __name__ == '__main__':
-    fd = FeatureData('data/Training_res.txt')
+    training = FeatureData('data/Training_res.txt', 'data/Training_cls.txt')
+    test = FeatureData('data/Test_res.txt', 'data/Test_cls.txt')
 
-    cnt = 1
-    for x in fd.tumor_samples:
-        print "line ", cnt, " = ", len(x), "\n\n"
-        cnt +=1
+    training._describe()
+    test._describe()
+
+    model = svm.SVC()
+    model.fit(training.X, training.Y)
+
+    results = model.predict(test.X)
+
+    for index, result in enumerate(results):
+    	print str(result) + " " + str(test.Y[index])
+
