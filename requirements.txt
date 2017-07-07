@@ -1,0 +1,7 @@
+tqdm
+sklearn
+numpy
+scipy
+nltk
+setuptools
+matplotlib
