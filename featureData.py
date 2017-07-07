@@ -23,11 +23,10 @@ class FeatureData(object):
 
     def _get_tumor_samples(self, path):
         with open(path, 'r') as inputFile:
-            lines = [l.strip().split('	') for l in inputFile.readlines()]           
+            lines = [l.strip().split('	') for l in inputFile.readlines()]
             data = np.matrix(lines[3:]).T[2:]
             data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
-
-        self.X = data.astype(float)
+        self.X = data.astype(np.float16)
 
     def _describe(self):
         print len(self.X)
@@ -50,4 +49,3 @@ if __name__ == '__main__':
 
     for index, result in enumerate(results):
     	print str(result) + " " + str(test.Y[index])
-
