@@ -1,5 +1,5 @@
 # Classifying-Multiple-Cancers-Using-Machine-Learning
-This project is part of the CENG 420 (AI) course at the University of Victoria
+This project is part of the CENG 420 (AI) course at the University of Victoria.
 
 ## Motivation
 Finding the right treatment plan for a cancer patient is a difficult process. Various treatment options are available depending on the stage of the cancer, type of cancer, and the patient's overall health. This means that in order to provide the best outcome for the patient, a proper diagnosis must be made. The way we diagnosis, treatment or prevention across different areas of Cancer is very primitive as compared to what we can accomplish with the help of computer science. Currently the Doctors start the process by mapping patient information into structured data by hand and then run basic statistical analyses to identify correlations [1]. The purpose of this project is to accurately classify a patient's type of cancer based on gene expressions.
