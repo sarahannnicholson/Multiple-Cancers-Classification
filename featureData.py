@@ -25,7 +25,7 @@ class FeatureData(object):
 
 	def _get_tumor_samples(self, path):
 		with open(path, 'r') as inputFile:
-			lines = [l.strip().split('	') for l in inputFile.readlines()]           
+			lines = [l.strip().split('	') for l in inputFile.readlines()]
 			data = np.matrix(lines[3:]).T
 			self.feature_names = data[1]
 			data = data[2:]
@@ -48,8 +48,9 @@ class FeatureData(object):
 		print "# classes = ", self.number_of_classes
 		print "-----------------------------\n"
 
-def plot_coefficients(classifier, feature_names, top_features=20):
-	 coef = classifier.coef_.ravel()
+def plot_coefficients(classifier, feature_names, class_name, top_features=20):
+	 coef = classifier.coef_[0]
+
 	 top_positive_coefficients = np.argsort(coef)[-top_features:]
 	 top_negative_coefficients = np.argsort(coef)[:top_features]
 	 top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
@@ -58,9 +59,9 @@ def plot_coefficients(classifier, feature_names, top_features=20):
 	 plt.figure(figsize=(30, 15))
 	 colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
 	 plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
-	 feature_names = np.array(feature_names)
+	 feature_names = np.array(feature_names)[top_coefficients]
 	 plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names, rotation='vertical', ha='right')
-	 plt.savefig("plot.png")
+	 plt.savefig("graphs/plot" + class_name + ".png")
 
 
 def run_test(train, test):
@@ -79,7 +80,7 @@ def run_test(train, test):
 
 		model = svm.SVC(kernel='linear')
 		model.fit(train.X, trainY)
-		plot_coefficients(model, train.feature_names.tolist()[0])
+		plot_coefficients(model, train.feature_names.tolist()[0], c)
 		results = model.predict(test.X)
 		res = zip(results, testY)
 		truePos = np.count_nonzero([y[0] for y in res if y[1]])
