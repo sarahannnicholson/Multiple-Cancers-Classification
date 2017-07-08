@@ -4,6 +4,8 @@ import re
 import numpy as np
 import tqdm
 from sklearn import svm
+from sklearn.svm import LinearSVC
+import matplotlib.pyplot as plt
 
 
 class FeatureData(object):
@@ -12,6 +14,7 @@ class FeatureData(object):
 	def __init__(self, res_path, cls_path):
 		self._get_classes(cls_path)
 		self._get_tumor_samples(res_path)
+
 
 	def _get_classes(self, path):
 		with open(path, 'r') as f:
@@ -29,18 +32,36 @@ class FeatureData(object):
 
 		self.X = data.astype(float)
 
-	def _describe(self):
-		print len(self.X)
-		print len(self.Y)
-		print self.number_of_samples
-		print self.number_of_classes
-
 	def _get_binary(self, name):
 		try:
 			index = self.classes.index(name) - 1
 			return  [c == str(index) for c in self.Y]
 		except ValueError:
 			return False
+
+
+    def _describe(self):
+        print "\n------ data description -----"
+        print "X len = ", len(self.X)
+        print "Y len = ", len(self.Y)
+        print "# samples = ", self.number_of_samples
+        print "# classes = ", self.number_of_classes
+        print "-----------------------------\n"
+
+def plot_coefficients(classifier, feature_names, top_features=20):
+     coef = classifier.coef_.ravel()
+     top_positive_coefficients = np.argsort(coef)[-top_features:]
+     top_negative_coefficients = np.argsort(coef)[:top_features]
+     top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+
+     # create plot
+     plt.figure(figsize=(30, 15))
+     colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
+     plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
+     feature_names = np.array(feature_names)
+     plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names, rotation='vertical', ha='right')
+     plt.savefig("plot.png")
+
 
 def run_test(train, test):
 	train._describe()
@@ -55,8 +76,10 @@ def run_test(train, test):
 			print "Not enough data"
 			continue
 
+
 		model = svm.SVC(kernel='linear')
 		model.fit(train.X, trainY)
+   	plot_coefficients(model, train.feature_names.tolist()[0])
 		results = model.predict(test.X)
 		res = zip(results, testY)
 		truePos = np.count_nonzero([y[0] for y in res if y[1]])
@@ -72,4 +95,3 @@ if __name__ == '__main__':
 	test = FeatureData('data/Test_res.txt', 'data/Test_cls.txt')
 
 	run_test(train, test)
-	
