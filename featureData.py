@@ -2,7 +2,6 @@ import csv
 import logging
 import re
 import numpy as np
-import tqdm
 from sklearn import svm
 from sklearn.svm import LinearSVC
 import matplotlib.pyplot as plt
@@ -27,10 +26,11 @@ class FeatureData(object):
 	def _get_tumor_samples(self, path):
 		with open(path, 'r') as inputFile:
 			lines = [l.strip().split('	') for l in inputFile.readlines()]           
-			data = np.matrix(lines[3:]).T[2:]
+			data = np.matrix(lines[3:]).T
+			self.feature_names = data[1]
+			data = data[2:]
 			data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
-
-		self.X = data.astype(float)
+		self.X = data.astype(np.float16)
 
 	def _get_binary(self, name):
 		try:
@@ -40,27 +40,27 @@ class FeatureData(object):
 			return False
 
 
-    def _describe(self):
-        print "\n------ data description -----"
-        print "X len = ", len(self.X)
-        print "Y len = ", len(self.Y)
-        print "# samples = ", self.number_of_samples
-        print "# classes = ", self.number_of_classes
-        print "-----------------------------\n"
+	def _describe(self):
+		print "\n------ data description -----"
+		print "X len = ", len(self.X)
+		print "Y len = ", len(self.Y)
+		print "# samples = ", self.number_of_samples
+		print "# classes = ", self.number_of_classes
+		print "-----------------------------\n"
 
 def plot_coefficients(classifier, feature_names, top_features=20):
-     coef = classifier.coef_.ravel()
-     top_positive_coefficients = np.argsort(coef)[-top_features:]
-     top_negative_coefficients = np.argsort(coef)[:top_features]
-     top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+	 coef = classifier.coef_.ravel()
+	 top_positive_coefficients = np.argsort(coef)[-top_features:]
+	 top_negative_coefficients = np.argsort(coef)[:top_features]
+	 top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
 
-     # create plot
-     plt.figure(figsize=(30, 15))
-     colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
-     plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
-     feature_names = np.array(feature_names)
-     plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names, rotation='vertical', ha='right')
-     plt.savefig("plot.png")
+	 # create plot
+	 plt.figure(figsize=(30, 15))
+	 colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
+	 plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
+	 feature_names = np.array(feature_names)
+	 plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names, rotation='vertical', ha='right')
+	 plt.savefig("plot.png")
 
 
 def run_test(train, test):
@@ -79,7 +79,7 @@ def run_test(train, test):
 
 		model = svm.SVC(kernel='linear')
 		model.fit(train.X, trainY)
-   	plot_coefficients(model, train.feature_names.tolist()[0])
+		plot_coefficients(model, train.feature_names.tolist()[0])
 		results = model.predict(test.X)
 		res = zip(results, testY)
 		truePos = np.count_nonzero([y[0] for y in res if y[1]])
