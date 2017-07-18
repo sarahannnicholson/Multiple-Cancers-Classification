@@ -64,38 +64,23 @@ class Dataset(object):
 
 
 	def predict(self):
+		print " Actual Class", "       | ", "Predicted Class\n", "--------------------------------------"
 		for i in range(len(self.testY)):
 			n = self.neighbours(self.testX[i])
-			print self.testY[i], self.vote(n)
+			l = 17 - len(self.testY[i])
+			print " ", self.testY[i], l*' ', "|   ", self.vote(n)
 
 
 if __name__ == '__main__':
 	train = Dataset('data/Iris.csv', 3)
-	
+
+	print "\n\n =================\n", 5*" ", "Step 1\n"," =================\n"
 	train.step1()
 	train.predict()
-	print '======= Train =========='
-	print train.trainX, '\n'
-	print train.trainY, '\n'
-	print 'classes =', train.num_of_classes
-	print '========================'
-	print '======= Test =========='
-	print train.testX, '\n'
-	print train.testY, '\n'
-	print 'classes =', train.num_of_classes
-	print '========================'
 
+
+	print "\n\n =================\n", 5*" ", "Step 2\n"," =================\n"
 	train.step2()
-	print '======= Train =========='
-	print train.trainX, '\n'
-	print train.trainY, '\n'
-	print 'classes =', train.num_of_classes
-	print '========================'
-	print '======= Test =========='
-	print train.testX, '\n'
-	print train.testY, '\n'
-	print 'classes =', train.num_of_classes
-	print '========================'
 	train.predict()
 
 
