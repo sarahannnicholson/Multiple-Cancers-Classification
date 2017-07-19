@@ -72,7 +72,7 @@ class Dataset(object):
 
 
 if __name__ == '__main__':
-	train = Dataset('data/Iris.csv', 3)
+	train = Dataset('Iris.csv', 3)
 
 	print "\n\n =================\n", 5*" ", "Step 1\n"," =================\n"
 	train.step1()
