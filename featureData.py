@@ -3,37 +3,9 @@ import logging
 import re
 import numpy as np
 from collections import Counter
-from sklearn import svm, preprocessing
-from sklearn.svm import LinearSVC
-from sklearn.neural_network import MLPClassifier
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import make_moons, make_circles, make_classification
-from sklearn.neural_network import MLPClassifier
-from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-
-names = ["Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process", "Decision Tree", "Random Forest", "Neural Net", "AdaBoost","Naive Bayes", "QDA"]
-
-classifiers = [
-	KNeighborsClassifier(3),
-	SVC(kernel="linear", C=0.025),
-	SVC(gamma=2, C=1),
-	GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
-	DecisionTreeClassifier(max_depth=5),
-	RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-	MLPClassifier(alpha=1),
-	AdaBoostClassifier(),
-	GaussianNB(),
-	QuadraticDiscriminantAnalysis()]
+from sklearn import preprocessing
+import matplotlib.pyplot as plt
 
 class FeatureData(object):
 	"""Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
@@ -57,9 +29,15 @@ class FeatureData(object):
 			data = np.matrix(lines[3:]).T
 			self.feature_names = data[1]
 			data = data[2:]
+			letters = np.delete(data, list(range(0, data.shape[1], 2)), axis=0)
 			data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
 
-		self.X = data.astype(float)
+			vectorizeFunc = np.vectorize(letter_mapping)
+			vdata = vectorizeFunc(letters)
+			# print "data ", data[0:9, 0:9]
+			# print "vdata ", vdata[0:9, 0:9]
+		self.X = np.concatenate((data.astype(float), vdata), axis=1)
+		# print self.X.shape, self.X[0:9, 0:9], self.X[0:9, 16063:16045]
 
 	def _get_binary(self, name):
 		try:
@@ -76,6 +54,14 @@ class FeatureData(object):
 		print "# samples = ", self.number_of_samples
 		print "# classes = ", self.number_of_classes
 		print "-----------------------------\n"
+
+def letter_mapping(letter):
+	if letter == 'A':
+		return 0
+	elif letter == 'M':
+		return 1
+	elif letter == 'P':
+		return 2
 
 def plot_coefficients(classifier, feature_names, class_name, top_features=20):
 	 coef = classifier.coef_[0]
@@ -98,7 +84,6 @@ def run_test(train, test):
 	test._describe()
 
 	for c in test.classes[1:]:
-		print c
 		trainY = train._get_binary(c)
 		testY = test._get_binary(c)
 
@@ -106,20 +91,20 @@ def run_test(train, test):
 			print "Not enough data"
 			continue
 
-		for name, model in zip(names, classifiers):
-			model.fit(train.X, trainY)
-			#plot_coefficients(model, train.feature_names.tolist()[0], c)
-			results = model.predict(test.X)
-			res = zip(results, testY)
-			truePos = np.count_nonzero([y[0] for y in res if y[1]])
-			falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
-			falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
-			print c, name
-			print float(truePos) / (truePos + falseNeg)
-			# print truePos
-			# print "T+" + str(truePos)
-			# print "F+" + str(falsePos)
-			# print "F-" + str(falseNeg)
+		model = SVC(kernel="linear")
+		model.fit(train.X, trainY)
+		plot_coefficients(model, train.feature_names.tolist()[0], c)
+		results = model.predict(test.X)
+		res = zip(results, testY)
+		truePos = np.count_nonzero([y[0] for y in res if y[1]])
+		falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
+		falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
+		print c
+		#print float(truePos) / (truePos + falseNeg)
+		print truePos
+		# print "T+" + str(truePos)
+		# print "F+" + str(falsePos)
+		# print "F-" + str(falseNeg)
 
 
 if __name__ == '__main__':
