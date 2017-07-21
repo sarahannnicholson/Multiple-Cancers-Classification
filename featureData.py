@@ -2,10 +2,38 @@ import csv
 import logging
 import re
 import numpy as np
-from sklearn import svm
+from collections import Counter
+from sklearn import svm, preprocessing
 from sklearn.svm import LinearSVC
+from sklearn.neural_network import MLPClassifier
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.datasets import make_moons, make_circles, make_classification
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
+names = ["Nearest Neighbors", "Linear SVM", "RBF SVM", "Gaussian Process", "Decision Tree", "Random Forest", "Neural Net", "AdaBoost","Naive Bayes", "QDA"]
+
+classifiers = [
+	KNeighborsClassifier(3),
+	SVC(kernel="linear", C=0.025),
+	SVC(gamma=2, C=1),
+	GaussianProcessClassifier(1.0 * RBF(1.0), warm_start=True),
+	DecisionTreeClassifier(max_depth=5),
+	RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+	MLPClassifier(alpha=1),
+	AdaBoostClassifier(),
+	GaussianNB(),
+	QuadraticDiscriminantAnalysis()]
 
 class FeatureData(object):
 	"""Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
@@ -30,7 +58,8 @@ class FeatureData(object):
 			self.feature_names = data[1]
 			data = data[2:]
 			data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
-		self.X = data.astype(np.float16)
+
+		self.X = data.astype(float)
 
 	def _get_binary(self, name):
 		try:
@@ -77,18 +106,20 @@ def run_test(train, test):
 			print "Not enough data"
 			continue
 
-
-		model = svm.SVC(kernel='linear')
-		model.fit(train.X, trainY)
-		plot_coefficients(model, train.feature_names.tolist()[0], c)
-		results = model.predict(test.X)
-		res = zip(results, testY)
-		truePos = np.count_nonzero([y[0] for y in res if y[1]])
-		falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
-		falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
-		print "T+" + str(truePos)
-		print "F+" + str(falsePos)
-		print "F-" + str(falseNeg)
+		for name, model in zip(names, classifiers):
+			model.fit(train.X, trainY)
+			#plot_coefficients(model, train.feature_names.tolist()[0], c)
+			results = model.predict(test.X)
+			res = zip(results, testY)
+			truePos = np.count_nonzero([y[0] for y in res if y[1]])
+			falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
+			falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
+			print c, name
+			print float(truePos) / (truePos + falseNeg)
+			# print truePos
+			# print "T+" + str(truePos)
+			# print "F+" + str(falsePos)
+			# print "F-" + str(falseNeg)
 
 
 if __name__ == '__main__':
