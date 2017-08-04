@@ -7,13 +7,12 @@ from sklearn.svm import SVC
 from sklearn import preprocessing
 import matplotlib.pyplot as plt
 
-class FeatureData(object):
+class Data(object):
 	"""Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
 
-	def __init__(self, res_path, cls_path):
+	def __init__(self, res_path, cls_path, feat_elim):
 		self._get_classes(cls_path)
-		self._get_tumor_samples(res_path)
-
+		self._get_tumor_samples(res_path, feat_elim)
 
 	def _get_classes(self, path):
 		with open(path, 'r') as f:
@@ -23,21 +22,16 @@ class FeatureData(object):
 			self.classes = reader[1].split(' ')[0:]
 			self.Y = reader[2].split(' ')
 
-	def _get_tumor_samples(self, path):
+	def _get_tumor_samples(self, path, feat_elim):
 		with open(path, 'r') as inputFile:
 			lines = [l.strip().split('	') for l in inputFile.readlines()]
-			data = np.matrix(lines[3:]).T
-			self.feature_names = data[1]
-			data = data[2:]
-			letters = np.delete(data, list(range(0, data.shape[1], 2)), axis=0)
-			data = np.delete(data, list(range(1, data.shape[1], 2)), axis=0)
-
-			vectorizeFunc = np.vectorize(letter_mapping)
-			vdata = vectorizeFunc(letters)
-			# print "data ", data[0:9, 0:9]
-			# print "vdata ", vdata[0:9, 0:9]
-		self.X = np.concatenate((data.astype(float), vdata), axis=1)
-		# print self.X.shape, self.X[0:9, 0:9], self.X[0:9, 16063:16045]
+			data = np.matrix(lines[3:])
+			self.feature_names = data[:,1]
+			if feat_elim:
+				data = feature_elimination(data)
+			data = data[:,2:]
+			data = np.delete(data, list(range(1, data.shape[1], 2)), axis=1)
+		self.X = data.astype(float).T
 
 	def _get_binary(self, name):
 		try:
@@ -45,7 +39,6 @@ class FeatureData(object):
 			return  [c == str(index) for c in self.Y]
 		except ValueError:
 			return False
-
 
 	def _describe(self):
 		print "\n------ data description -----"
@@ -55,13 +48,16 @@ class FeatureData(object):
 		print "# classes = ", self.number_of_classes
 		print "-----------------------------\n"
 
-def letter_mapping(letter):
-	if letter == 'A':
-		return 0
-	elif letter == 'M':
-		return 1
-	elif letter == 'P':
-		return 2
+def feature_elimination(data):
+	new_X = data[0] # hackzz
+	with open('bestFeatures.txt', 'r') as f:
+		lines = [l.strip().split(',') for l in f.readlines()]
+		gene_list = [gene for line in lines for gene in line]
+	for gene in gene_list:
+		rows = np.where(data == gene)
+		new_X = np.append(new_X, data[rows[0]], axis=0)
+	print new_X
+	return new_X[1:] # Eww
 
 def plot_coefficients(classifier, feature_names, class_name, top_features=20):
 	 coef = classifier.coef_[0]
@@ -93,7 +89,7 @@ def run_test(train, test):
 
 		model = SVC(kernel="linear")
 		model.fit(train.X, trainY)
-		plot_coefficients(model, train.feature_names.tolist()[0], c)
+		#plot_coefficients(model, train.feature_names.tolist()[0], c)
 		results = model.predict(test.X)
 		res = zip(results, testY)
 		truePos = np.count_nonzero([y[0] for y in res if y[1]])
@@ -108,7 +104,7 @@ def run_test(train, test):
 
 
 if __name__ == '__main__':
-	train = FeatureData('data/Training_res.txt', 'data/Training_cls.txt')
-	test = FeatureData('data/Test_res.txt', 'data/Test_cls.txt')
+	train = Data('data/Training_res.txt', 'data/Training_cls.txt', True)
+	test = Data('data/Test_res.txt', 'data/Test_cls.txt', True)
 
 	run_test(train, test)
