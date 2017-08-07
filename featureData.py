@@ -63,8 +63,9 @@ def feature_selection_F(data):
 	print new_X
 	return new_X[1:] # Eww
 
-def feature_selection(X, y):
-	best_indices = SelectKBest(mutual_info_classif, k=2).fit(X, y).get_support(indices=True)
+def feature_selection(X, y, k_val):
+	print k_val
+	best_indices = SelectKBest(mutual_info_classif, k=k_val).fit(X, y).get_support(indices=True)
 	return best_indices
 
 def plot_coefficients(classifier, feature_names, class_name, top_features=20):
@@ -86,22 +87,43 @@ def plot_coefficients(classifier, feature_names, class_name, top_features=20):
 def run_test(train, test):
 	train._describe()
 	test._describe()
-	doFeatureSelection = False
 
-	print "Train and test model"
+	# ========================
+	#    System parameters
+	# ========================
+	k_values = {
+		'Breast': 10,
+		'Prostate': 2,
+		'Lung': 100, 
+		'Colorectal': 2,
+		'Lymphoma': 100, 
+		'Bladder': 50,
+		'Melanoma': 10, 
+		'Uterus__Adeno': 50,
+		'Leukemia': 2, 
+		'Renal':0,
+		'Pancreas': 10, 
+		'Ovary': 150,
+		'Mesothelioma': 0, 
+		'CNS': 0
+	}
+
 	for c in tqdm(test.classes[1:]):
 		y_train = train._get_binary(c)
 		y_test  = test._get_binary(c)
+		print "\n", c
 
 		if not y_train or not y_test:
 			print "Not enough data"
 			continue
 		
-		if doFeatureSelection: 	# Best features
-			best_indices = feature_selection(train.X, y_train)
+		if k_values[c]: 	# Best features
+			print "selecting best featuers",
+			best_indices = feature_selection(train.X, y_train, k_values[c])
 			X_train = train.X[:,best_indices]
 			X_test = test.X[:,best_indices]
 		else: #without best features
+			print "doing all featuers"
 			X_train = train.X
 			X_test = test.X
 
@@ -113,9 +135,7 @@ def run_test(train, test):
 		truePos = np.count_nonzero([y[0] for y in res if y[1]])
 		falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
 		falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
-		print c
 		#print float(truePos) / (truePos + falseNeg)
-		print truePos
 		print "T+" + str(truePos)
 		print "F+" + str(falsePos)
 		print "F-" + str(falseNeg)
