@@ -6,8 +6,9 @@ from sklearn.svm import SVC
 from collections import Counter
 from sklearn import preprocessing
 import matplotlib.pyplot as plt
-from sklearn.feature_selection import mutual_info_classif
-from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import mutual_info_classif, f_classif
+from sklearn.feature_selection import SelectKBest, SelectPercentile
+from sklearn.metrics import precision_score, recall_score, accuracy_score, classification_report
 
 class Data(object):
 	"""Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
@@ -16,6 +17,7 @@ class Data(object):
 		self.dataType = dataType
 		self._get_classes(cls_path)
 		self._get_tumor_samples(res_path)
+		self._clean()
 
 	def _get_classes(self, path):
 		print "Getting " + self.dataType + " classes"
@@ -51,21 +53,15 @@ class Data(object):
 		print "# classes = ", self.number_of_classes
 		print "-----------------------------\n"
 
-# Failed attempt to do feature selection
-def feature_selection_F(data):
-	new_X = data[0] # hackzz
-	with open('bestFeatures.txt', 'r') as f:
-		lines = [l.strip().split(',') for l in f.readlines()]
-		gene_list = [gene for line in lines for gene in line]
-	for gene in gene_list:
-		rows = np.where(data == gene)
-		new_X = np.append(new_X, data[rows[0]], axis=0)
-	print new_X
-	return new_X[1:] # Eww
+	def _clean(self):
+		invalid = np.where(np.isin(self.Y, ['14']))[0]
+		print invalid
+		self.Y = np.delete(self.Y, invalid, 0)
+		self.X = np.delete(self.X, invalid, 0)
+
 
 def feature_selection(X, y, k_val):
-	print k_val
-	best_indices = SelectKBest(mutual_info_classif, k=k_val).fit(X, y).get_support(indices=True)
+	best_indices = SelectKBest(f_classif, k=k_val).fit(X, y).get_support(indices=True)
 	return best_indices
 
 def plot_coefficients(classifier, feature_names, class_name, top_features=20):
@@ -88,57 +84,39 @@ def run_test(train, test):
 	train._describe()
 	test._describe()
 
+	normalizer = preprocessing.StandardScaler().fit(train.X)
+	train.X = normalizer.transform(train.X)
+	test.X = normalizer.transform(test.X)
 	# ========================
 	#    System parameters
 	# ========================
-	k_values = {
-		'Breast': 10,
-		'Prostate': 2,
-		'Lung': 100, 
-		'Colorectal': 2,
-		'Lymphoma': 100, 
-		'Bladder': 50,
-		'Melanoma': 10, 
-		'Uterus__Adeno': 50,
-		'Leukemia': 2, 
-		'Renal':0,
-		'Pancreas': 10, 
-		'Ovary': 150,
-		'Mesothelioma': 0, 
-		'CNS': 0
-	}
+	y_train = train.Y
+	y_test  = test.Y	
+	X_train = train.X
+	X_test = test.X
 
-	for c in tqdm(test.classes[1:]):
-		y_train = train._get_binary(c)
-		y_test  = test._get_binary(c)
-		print "\n", c
+	accuracy = list()
+	for x in range(50):
+		best_features = set()
+		for cls in train.classes:
+			features = feature_selection(train.X, train._get_binary(cls), x+1)
+			best_features.update(features)
 
-		if not y_train or not y_test:
-			print "Not enough data"
-			continue
-		
-		if k_values[c]: 	# Best features
-			print "selecting best featuers",
-			best_indices = feature_selection(train.X, y_train, k_values[c])
-			X_train = train.X[:,best_indices]
-			X_test = test.X[:,best_indices]
-		else: #without best features
-			print "doing all featuers"
-			X_train = train.X
-			X_test = test.X
+		best =  list(best_features)
+		X_train = train.X[:,best]
+		X_test = test.X[:,best]
 
-		model = SVC(kernel="linear")
+		model = SVC(kernel="linear", probability=True)
 		model.fit(X_train, y_train)
-		#plot_coefficients(model, train.feature_names.tolist()[0], c)
 		results = model.predict(X_test)
 		res = zip(results, y_test)
-		truePos = np.count_nonzero([y[0] for y in res if y[1]])
-		falsePos = np.count_nonzero([y[0] for y in res if not y[1]])
-		falseNeg = np.count_nonzero([not y[0] for y in res if y[1]])
-		#print float(truePos) / (truePos + falseNeg)
-		print "T+" + str(truePos)
-		print "F+" + str(falsePos)
-		print "F-" + str(falseNeg)
+		
+		a =  accuracy_score(y_test, results)
+		accuracy.append(a)
+		print classification_report(y_test, results)
+
+	print np.max(accuracy)
+	print np.argmax(accuracy)
 
 
 if __name__ == '__main__':
@@ -148,3 +126,4 @@ if __name__ == '__main__':
 	test = Data('data/Test_res.txt', 'data/Test_cls.txt', 'test')
 
 	run_test(train, test)
+
