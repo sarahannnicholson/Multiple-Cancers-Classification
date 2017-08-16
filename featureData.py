@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 import numpy as np
+import itertools
 from tqdm import tqdm
 import csv, logging, re
 from sklearn.svm import SVC
 from collections import Counter
 from sklearn import preprocessing
+from sklearn.utils import shuffle
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import mutual_info_classif, f_classif
-from sklearn.feature_selection import SelectKBest, SelectPercentile
-from sklearn.metrics import precision_score, recall_score, accuracy_score, classification_report
+from sklearn.feature_selection import SelectKBest, SelectPercentile, SelectFpr
+from sklearn.metrics import precision_score, recall_score, accuracy_score, confusion_matrix
 
 class Data(object):
 	"""Class responsible for interfacing with our data, eg) getting the data, stats, etc.."""
@@ -64,21 +67,83 @@ def feature_selection(X, y, k_val):
 	best_indices = SelectKBest(f_classif, k=k_val).fit(X, y).get_support(indices=True)
 	return best_indices
 
-def plot_coefficients(classifier, feature_names, class_name, top_features=20):
-	 coef = classifier.coef_[0]
+def plot_coefficients(classifier, feature_names, class_names, top_features=10):
+	for x in range(len(class_names[1:])):
+		coef = classifier.coef_[x]
 
-	 top_positive_coefficients = np.argsort(coef)[-top_features:]
-	 top_negative_coefficients = np.argsort(coef)[:top_features]
-	 top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+		top_positive_coefficients = np.argsort(coef)[-top_features:]
+		top_negative_coefficients = np.argsort(coef)[:top_features]
+		top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
 
-	 # create plot
-	 plt.figure(figsize=(30, 15))
-	 colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
-	 plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
-	 feature_names = np.array(feature_names)[top_coefficients]
-	 plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names, rotation='vertical', ha='right')
-	 plt.savefig("graphs/plot" + class_name + ".png")
+		# create plot
+		plt.figure(figsize=(30, 15))
+		colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
+		plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
+		names = np.array(feature_names)[top_coefficients]
+		plt.xticks(np.arange(1, 1 + 2 * top_features), names, rotation='vertical', ha='right')
+		plt.savefig("graphs/plot" + class_names[x] + ".png")
 
+def print_accuracy(accuracy, num_samples, val_accuracy):
+
+	val_mean = np.mean(val_accuracy, axis=1)
+	val_std = np.std(val_accuracy, axis=1)
+
+
+	plt.figure()
+	plt.plot(num_samples, accuracy, color="b")
+	plt.plot(num_samples, val_mean, color="g")
+	plt.fill_between(num_samples,
+		val_mean - val_std,
+		val_mean + val_std,
+		alpha=0.3,
+		color="g")
+
+	plt.title("Learning Graph")
+	plt.ylabel('Accuracy')
+	plt.xlabel('# Of Samples')
+	plt.savefig("graphs/learning.png")
+
+def print_confusion(y_test, y_pred, classes):
+	plt.figure()
+	cmap=plt.cm.Blues
+	cm = confusion_matrix(y_test, y_pred)
+	cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+	plt.imshow(cm, interpolation='nearest', cmap=cmap)
+	plt.title("Confusion Matrix")
+	plt.colorbar()
+	tick_marks = np.arange(len(classes))
+	plt.xticks(tick_marks, classes, rotation=90)
+	plt.yticks(tick_marks, classes)
+
+	fmt = '.1f'
+	thresh = cm.max() / 2.
+	for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+		plt.text(j, i, format(cm[i, j], fmt),
+				 horizontalalignment="center",
+				 color="white" if cm[i, j] > thresh else "black")
+
+	plt.tight_layout()
+	plt.ylabel('True label')
+	plt.xlabel('Predicted label')
+	plt.savefig("graphs/confusion.png")
+
+def train_test(train_X, train_y, test_X, test_y, classes):
+	best_features = set()
+	for cls in classes:
+		index = classes.index(cls) - 1
+		y_bin =  [c == str(index) for c in train_y]
+		features = feature_selection(train_X, y_bin, 43)
+		best_features.update(features)
+
+	best =  list(best_features)
+	X_train = train_X[:,best]
+	X_test = test_X[:,best]
+
+	model = SVC(kernel="linear")
+	model.fit(X_train, train_y)
+	results = model.predict(X_test)
+
+	return  accuracy_score(test_y, results)
 
 def run_test(train, test):
 	train._describe()
@@ -88,35 +153,48 @@ def run_test(train, test):
 	train.X = normalizer.transform(train.X)
 	test.X = normalizer.transform(test.X)
 	# ========================
-	#    System parameters
+	#	System parameters
 	# ========================
 	y_train = train.Y
 	y_test  = test.Y	
 	X_train = train.X
 	X_test = test.X
 
+	X_train_s, y_train_s = shuffle(train.X, train.Y, random_state=4)
+
 	accuracy = list()
-	for x in range(50):
-		best_features = set()
-		for cls in train.classes:
-			features = feature_selection(train.X, train._get_binary(cls), x+1)
-			best_features.update(features)
+	num_samples = list()
 
-		best =  list(best_features)
-		X_train = train.X[:,best]
-		X_test = test.X[:,best]
 
-		model = SVC(kernel="linear", probability=True)
-		model.fit(X_train, y_train)
-		results = model.predict(X_test)
-		res = zip(results, y_test)
-		
-		a =  accuracy_score(y_test, results)
+	for i in range(10, len(y_train_s), 5):
+		train_X = X_train_s[:i]
+		train_y = y_train_s[:i]
+
+		a = train_test(train_X, train_y, X_test, y_test, train.classes)
+
 		accuracy.append(a)
-		print classification_report(y_test, results)
+		num_samples.append(i)
+	print accuracy
 
-	print np.max(accuracy)
-	print np.argmax(accuracy)
+	val_accuracy = list()
+	val_num_samples = list()
+
+	for i in range(10, len(y_train), 5):
+		tmp_list = list()
+		for z in range(10):
+			X_train, X_test, y_train, y_test = train_test_split(
+			train.X, train.Y, train_size=i)
+			a = train_test(X_train, y_train, X_test, y_test, train.classes)
+
+			tmp_list.append(a)
+		val_accuracy.append(tmp_list)
+		val_num_samples.append(i)
+	print accuracy
+	print_accuracy(accuracy, num_samples, val_accuracy)
+
+	#plot_coefficients(model, [train.feature_names[i] for i in best_features], train.classes)
+
+	#print_confusion(y_test, results, train.classes[1:])
 
 
 if __name__ == '__main__':
